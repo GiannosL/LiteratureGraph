@@ -2,13 +2,20 @@ from itertools import combinations
 
 
 def process_articles(articles: list) -> tuple:
+    # fix keyword case inconsistency
+    for my_article in articles:
+        updated_keywords = []
+        for my_keyword in my_article["keywords"]:
+            updated_keywords.append(my_keyword.lower())
+        my_article["keywords"] = updated_keywords
+        
     # collect edge lists
-    id_title_map = get_article_title_ids(articles)
-    article_author_edge_list = get_article_author_edge_list(articles)
-    author_author_edge_list = get_co_authors(articles)
-    keyword_keyword_edge_list = get_keyword_keyword_edge_list(articles)
-    author_keyword_edge_list = get_author_keyword_edge_list(articles)
-    article_keyword_edge_list = get_article_keyword_edge_list(articles)
+    id_title_map = _get_article_title_ids(articles)
+    article_author_edge_list = _get_article_author_edge_list(articles)
+    author_author_edge_list = _get_co_authors(articles)
+    keyword_keyword_edge_list = _get_keyword_keyword_edge_list(articles)
+    author_keyword_edge_list = _get_author_keyword_edge_list(articles)
+    article_keyword_edge_list = _get_article_keyword_edge_list(articles)
 
     #
     articles, authors, keywords = [], [], []
@@ -57,7 +64,7 @@ def process_articles(articles: list) -> tuple:
     return data_dictionary, node_types, edge_types
 
 
-def get_article_author_edge_list(articles: list) -> list[tuple[str, str]]:
+def _get_article_author_edge_list(articles: list) -> list[tuple[str, str]]:
     #
     edge_list = []
     for my_article in articles:
@@ -68,7 +75,7 @@ def get_article_author_edge_list(articles: list) -> list[tuple[str, str]]:
     return edge_list
 
 
-def get_article_title_ids(articles: list) -> dict[str, str]:
+def _get_article_title_ids(articles: list) -> dict[str, str]:
     id_dict = {}
     for my_article in articles:
         id_dict[my_article["pmid"]] = my_article["title"]
@@ -76,7 +83,7 @@ def get_article_title_ids(articles: list) -> dict[str, str]:
     return id_dict
 
 
-def get_co_authors(articles: list) -> list[tuple[str, str]]:
+def _get_co_authors(articles: list) -> list[tuple[str, str]]:
     edge_list = []
     for my_article in articles:
         author_list = [m.strip() for m in my_article["authors"].split("|")]
@@ -86,7 +93,7 @@ def get_co_authors(articles: list) -> list[tuple[str, str]]:
     return edge_list
 
 
-def get_keyword_keyword_edge_list(articles: list) -> list[tuple[str, str]]:
+def _get_keyword_keyword_edge_list(articles: list) -> list[tuple[str, str]]:
     edge_list = []
     for my_article in articles:
         keyword_pairs = list(combinations(my_article["keywords"], 2))
@@ -95,7 +102,7 @@ def get_keyword_keyword_edge_list(articles: list) -> list[tuple[str, str]]:
     return edge_list
 
 
-def get_author_keyword_edge_list(articles: list) -> list[tuple[str, str]]:
+def _get_author_keyword_edge_list(articles: list) -> list[tuple[str, str]]:
     edge_list = []
     for my_article in articles:
         author_list = my_article["authors"].split("|")
@@ -106,7 +113,7 @@ def get_author_keyword_edge_list(articles: list) -> list[tuple[str, str]]:
     return edge_list
 
 
-def get_article_keyword_edge_list(articles: list) -> list[tuple[str, str]]:
+def _get_article_keyword_edge_list(articles: list) -> list[tuple[str, str]]:
     edge_list = []
     for my_article in articles:
         for my_keyword in my_article["keywords"]:

@@ -79,7 +79,7 @@ def get_article_title_ids(articles: list) -> dict[str, str]:
 def get_co_authors(articles: list) -> list[tuple[str, str]]:
     edge_list = []
     for my_article in articles:
-        author_list = my_article["authors"].split("|")
+        author_list = [m.strip() for m in my_article["authors"].split("|")]
         author_pairs = list(combinations(author_list, 2))
         edge_list.extend(author_pairs)
 
@@ -101,7 +101,7 @@ def get_author_keyword_edge_list(articles: list) -> list[tuple[str, str]]:
         author_list = my_article["authors"].split("|")
         for my_author in author_list:
             for my_keyword in my_article["keywords"]:
-                edge_list.append((my_author, my_keyword))
+                edge_list.append((my_author.strip(), my_keyword))
 
     return edge_list
 

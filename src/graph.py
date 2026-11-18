@@ -1,7 +1,10 @@
+import torch
 import pandas as pd
 import networkx as nx
 from pathlib import Path
 import plotly.graph_objects as go
+from torch_geometric.data import HeteroData
+from torch_geometric.transforms import ToUndirected
 from src import NODE_TYPE_COLORS, NODE_SIZE_MAP
 
 
@@ -12,32 +15,35 @@ class ArticleGraph:
         self._edge_types = edge_types
 
         # generate graph
-        self._graph = _generate_graph(data, node_types, edge_types)
+        self.graph = _generate_graph(data, node_types, edge_types)
 
         # add node degrees to graph
-        node_degree = dict(self._graph.degree())
-        nx.set_node_attributes(self._graph, node_degree, "degree")
+        node_degree = dict(self.graph.degree())
+        nx.set_node_attributes(self.graph, node_degree, "degree")
 
         # assign node sizes for graph figure
-        node_bins = _bin_node_sizes(graph=self._graph, n_bins=7)
+        node_bins = _bin_node_sizes(graph=self.graph, n_bins=7)
 
-        for my_node, my_attrs in self._graph.nodes(data=True):
+        for my_node, my_attrs in self.graph.nodes(data=True):
             # add size for graph figure
             my_attrs["size"] = NODE_SIZE_MAP.get(node_bins[my_node], 1_000)
             # check if the node is an article
             my_attrs["name"] = data["id_article_map"].get(my_node, my_node)
 
-    def plot(self, file_name: Path = None):
-        fig = _plot_interactive_graph(graph=self._graph)
+        # generate PyTorch representation of the graph for computational purposes
+        self.node_encodings, self.torch_graph = _generate_torch_graph(data, node_types, edge_types)
 
-        if file_name == None:
+    def plot(self, file_name: Path = None):
+        fig = _plot_interactive_graph(graph=self.graph)
+
+        if file_name is None:
             fig.show()
         else:
             fig.write_html(file_name)
 
 
 def _generate_graph(data: dict, node_types: list[str], edge_types: list[tuple]) -> nx.Graph:
-    #
+    # empty networkx graph object
     my_graph = nx.Graph()
     for node_type in node_types:
         my_attrs = {"type": node_type, "color": NODE_TYPE_COLORS[node_type]}
@@ -116,3 +122,30 @@ def _bin_node_sizes(graph: nx.Graph, n_bins: int) -> dict:
     bins = bins.to_dict()
 
     return bins
+
+
+def _generate_torch_graph(data: dict, node_types: list[str], edge_types: list[tuple]) -> tuple[dict, HeteroData]:
+    # encoding map
+    all_node_encodings = {}
+    # empty graph object
+    graph = HeteroData()
+
+    for node_type in node_types:
+        encoded_nodes = {nd: i for i, nd in enumerate(data[node_type])}
+        all_node_encodings[node_type] = encoded_nodes
+        #
+        graph[node_type].num_nodes = len(encoded_nodes.keys())
+        graph[node_type].x = torch.ones((graph[node_type].num_nodes, 300), dtype=torch.float16) * 7
+
+    for edge_type in edge_types:
+        node_a_type, _, node_b_type = edge_type
+        encoded_edge_list = [
+            (all_node_encodings[node_a_type][a], all_node_encodings[node_b_type][b]) for a, b in data[edge_type]
+        ]
+        #
+        graph[edge_type].edge_index = torch.tensor(encoded_edge_list, dtype=torch.long).t()
+
+    # convert graph to undirected
+    graph = ToUndirected()(graph)
+
+    return all_node_encodings, graph

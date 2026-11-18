@@ -1,6 +1,7 @@
 from src import FileParser
 from src.graph import ArticleGraph
 from src.processing import process_articles
+from src.node_representation import get_node_embeddings
 
 CONFIG_FILE = "configuration.yaml"
 
@@ -25,12 +26,13 @@ def main():
 
     #
     node_combinations = {
-        "figure_only_author.html": ["author"],
-        "figure_only_keyword.html": ["keyword"],
-        "figure_article_author.html": ["article", "author"],
-        "figure_author_keyword.html": ["author", "keyword"],
+        "only_author": ["author"],
+        "only_keyword": ["keyword"],
+        "article_author": ["article", "author"],
+        "author_keyword": ["author", "keyword"],
     }
-    for output_file_name, my_node_combo in node_combinations.item():
+    graph_dictionary = {}
+    for node_combo, my_node_combo in node_combinations.items():
         # select edge types with relevant node types
         my_edge_types = [e for e in all_edge_types if (e[0] in my_node_combo) and (e[2] in my_node_combo)]
         #
@@ -39,8 +41,33 @@ def main():
             node_types=my_node_combo,
             edge_types=my_edge_types,
         )
-        output_file_name = config["output_directory"] / output_file_name
-        article_graph.plot()
+        output_file_name = config["output_directory"] / f"figure_{node_combo}.html"
+        article_graph.plot(file_name=output_file_name)
+
+        # save graph
+        graph_dictionary[node_combo] = article_graph
+
+    # node representation learning
+    node_representations = get_node_embeddings(
+        graph=graph_dictionary["author_keyword"],
+        metapath=[
+            ("author", "writes_with", "author"),
+            ("author", "works_on", "keyword"),
+            ("keyword", "appears_with", "keyword"),
+            ("keyword", "rev_works_on", "author"),
+        ],
+        metapath_sett={
+            "embedding_dimensions": 256,
+            "walk_length": 20,
+            "context_size": 5,
+            "walks_per_node":5,
+            "num_negative_samples": 3,
+            "learning_rate": 0.001,
+            "epochs": 10
+        }
+    )
+
+    print("\n[!] Done")
 
 
 if __name__ == "__main__":

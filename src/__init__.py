@@ -1,6 +1,7 @@
 import yaml
 import pickle
 from pathlib import Path
+from typing import Any
 from src.file_collector import get_articles
 
 NODE_SIZE_MAP = {
@@ -24,7 +25,7 @@ class FileParser:
         pass
 
     @staticmethod
-    def parse_config(file_name: str) -> dict[str, object]:
+    def parse_config(file_name: str) -> dict[str, Any]:
         """ parse configuration file """
         with open(file_name, "r") as f:
             contents = yaml.safe_load(f)

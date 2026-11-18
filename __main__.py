@@ -21,15 +21,26 @@ def main():
     )
 
     # node list and edge lists
-    data, node_types, edge_types = process_articles(articles[:100])
+    data, all_node_types, all_edge_types = process_articles(articles[:500])
 
     #
-    article_graph = ArticleGraph(
-        data=data,
-        node_types=node_types,
-        edge_types=edge_types,
-    )
-    article_graph.plot()
+    node_combinations = {
+        "figure_only_author.html": ["author"],
+        "figure_only_keyword.html": ["keyword"],
+        "figure_article_author.html": ["article", "author"],
+        "figure_author_keyword.html": ["author", "keyword"],
+    }
+    for output_file_name, my_node_combo in node_combinations.item():
+        # select edge types with relevant node types
+        my_edge_types = [e for e in all_edge_types if (e[0] in my_node_combo) and (e[2] in my_node_combo)]
+        #
+        article_graph = ArticleGraph(
+            data=data,
+            node_types=my_node_combo,
+            edge_types=my_edge_types,
+        )
+        output_file_name = config["output_directory"] / output_file_name
+        article_graph.plot()
 
 
 if __name__ == "__main__":

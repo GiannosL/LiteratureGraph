@@ -1,6 +1,8 @@
+import pandas as pd
 import networkx as nx
+from pathlib import Path
 import plotly.graph_objects as go
-from src import NODE_TYPE_COLORS
+from src import NODE_TYPE_COLORS, NODE_SIZE_MAP
 
 
 class ArticleGraph:
@@ -16,8 +18,22 @@ class ArticleGraph:
         node_degree = dict(self._graph.degree())
         nx.set_node_attributes(self._graph, node_degree, "degree")
 
-    def plot(self):
-        _plot_interactive_graph(graph=self._graph)
+        # assign node sizes for graph figure
+        node_bins = _bin_node_sizes(graph=self._graph, n_bins=7)
+
+        for my_node, my_attrs in self._graph.nodes(data=True):
+            # add size for graph figure
+            my_attrs["size"] = NODE_SIZE_MAP.get(node_bins[my_node], 1_000)
+            # check if the node is an article
+            my_attrs["name"] = data["id_article_map"].get(my_node, my_node)
+
+    def plot(self, file_name: Path = None):
+        fig = _plot_interactive_graph(graph=self._graph)
+
+        if file_name == None:
+            fig.show()
+        else:
+            fig.write_html(file_name)
 
 
 def _generate_graph(data: dict, node_types: list[str], edge_types: list[tuple]) -> nx.Graph:
@@ -42,14 +58,16 @@ def _plot_interactive_graph(graph: nx.Graph):
 
     #
     marker_params = {
-        "size": [graph.nodes[n]["degree"] for n in graph.nodes()],
+        "size": [graph.nodes[n]["size"] for n in graph.nodes()],
         "color": [graph.nodes[n]["color"] for n in graph.nodes()],
         "line": {"width": 1, "color": "black"},
     }
     node_text = [
         (
-            f"{n}<br>Type: {graph.nodes[n]['type']}"
-            f"<br> Degree: {graph.nodes[n]['degree']}"
+            f"Name: {graph.nodes[n]['name']}"
+            f"<br>Type: {graph.nodes[n]['type']}"
+            f"<br>Degree: {graph.nodes[n]['degree']}"
+            #f"<br>Size: {graph.nodes[n]['size']}"
          ) for n in  graph.nodes()
     ]
     node_trace = go.Scatter(
@@ -86,4 +104,15 @@ def _plot_interactive_graph(graph: nx.Graph):
         xaxis={"visible": False},
         yaxis={"visible": False},
     )
-    fig.show()
+
+    return fig
+
+
+def _bin_node_sizes(graph: nx.Graph, n_bins: int) -> dict:
+    degrees = pd.Series(dict(graph.degree()))
+    #
+    #bins = pd.qcut(degrees.rank(method="first"), q=n_bins, labels=False)
+    bins = pd.cut(degrees, bins=n_bins, labels=False)
+    bins = bins.to_dict()
+
+    return bins

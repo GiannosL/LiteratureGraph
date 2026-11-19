@@ -3,6 +3,9 @@
 .idea/
 uv.lock
 pyproject.toml
+#
+configuration.yaml
+output/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

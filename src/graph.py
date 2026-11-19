@@ -64,7 +64,8 @@ def _plot_interactive_graph(graph: nx.Graph):
 
     #
     marker_params = {
-        "size": [graph.nodes[n]["size"] for n in graph.nodes()],
+        #"size": [graph.nodes[n]["size"] for n in graph.nodes()], # TODO: Need to fix
+        "size": [7 for n in graph.nodes()],
         "color": [graph.nodes[n]["color"] for n in graph.nodes()],
         "line": {"width": 1, "color": "black"},
     }

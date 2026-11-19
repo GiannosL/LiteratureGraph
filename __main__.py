@@ -1,4 +1,5 @@
 from src import FileParser
+from src.plotter import Plotter
 from src.graph import ArticleGraph
 from src.processing import process_articles
 from src.node_representation import get_node_embeddings
@@ -20,9 +21,11 @@ def main():
         update_flag=config["update_articles"],
         out_dir=config["output_directory"],
     )
+    print("\n[ ] Data collected.")
 
     # node list and edge lists
     data, all_node_types, all_edge_types = process_articles(articles[:500])
+    print("[ ] Data processed.")
 
     #
     node_combinations = {
@@ -30,6 +33,7 @@ def main():
         "only_keyword": ["keyword"],
         "article_author": ["article", "author"],
         "author_keyword": ["author", "keyword"],
+        "all": ["author", "keyword", "article"],
     }
     graph_dictionary = {}
     for node_combo, my_node_combo in node_combinations.items():
@@ -46,26 +50,49 @@ def main():
 
         # save graph
         graph_dictionary[node_combo] = article_graph
+    print("[ ] Graphs generated.")
 
     # node representation learning
+    print("\n=== MetaPath2Vec: authors-keywords ===")
     node_representations = get_node_embeddings(
-        graph=graph_dictionary["author_keyword"],
+        graph=graph_dictionary["all"],
         metapath=[
+            ("article", "is_written_by", "author"),
             ("author", "writes_with", "author"),
             ("author", "works_on", "keyword"),
             ("keyword", "appears_with", "keyword"),
             ("keyword", "rev_works_on", "author"),
+            ("author", "rev_is_written_by", "article")
         ],
-        metapath_sett={
-            "embedding_dimensions": 256,
-            "walk_length": 20,
-            "context_size": 5,
-            "walks_per_node":5,
-            "num_negative_samples": 3,
-            "learning_rate": 0.001,
-            "epochs": 10
-        }
+        metapath_sett=config["metapath_settings"],
     )
+    print("\n[ ] MetaPath2Vec finished.")
+
+    #
+    plot = Plotter()
+    plot.metapath2vec_loss_history(
+        loss_history=node_representations["loss_history"],
+        output_file=config["output_directory"]/"figure_metapath2vec_loss_history.png",
+    )
+    plot.embedding_space(
+        graph=graph_dictionary["all"],
+        embs=node_representations["embeddings"],
+        output_file=config["output_directory"]/"figure_embedding_space_projection_all.html")
+    plot.embedding_space(
+        node_type="keyword",
+        graph=graph_dictionary["all"],
+        embs=node_representations["embeddings"],
+        output_file=config["output_directory"]/"figure_embedding_space_projection_keywords.html")
+    plot.embedding_space(
+        node_type="author",
+        graph=graph_dictionary["all"],
+        embs=node_representations["embeddings"],
+        output_file=config["output_directory"]/"figure_embedding_space_projection_authors.html")
+    plot.embedding_space(
+        node_type="article",
+        graph=graph_dictionary["all"],
+        embs=node_representations["embeddings"],
+        output_file=config["output_directory"]/"figure_embedding_space_projection_articles.html")
 
     print("\n[!] Done")
 

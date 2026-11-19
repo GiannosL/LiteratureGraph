@@ -5,7 +5,8 @@ from src.graph import ArticleGraph
 
 def get_node_embeddings(graph: ArticleGraph, metapath: list[tuple[str, str, str]], metapath_sett: dict):
     # load device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    dev_str = "cuda" if torch.cuda.is_available() else "cpu"
+    device = torch.device(dev_str)
     #
     g = graph.torch_graph
 
@@ -42,6 +43,7 @@ def get_node_embeddings(graph: ArticleGraph, metapath: list[tuple[str, str, str]
 
     # training loop
     model.train()
+    loss_history = []
     for epoch in range(metapath_sett["epochs"]):
         total_loss = 0
 
@@ -56,7 +58,9 @@ def get_node_embeddings(graph: ArticleGraph, metapath: list[tuple[str, str, str]
 
         # average loss across batches
         avg_loss = total_loss / len(loader)
-        print(f"Epochs {epoch+1}/{metapath_sett['epochs']} | Loss: {avg_loss:.4f}")
+        loss_history.append(avg_loss)
+        if (epoch == 0) or ((epoch+1) % 100 == 0):
+            print(f"Epochs {epoch+1}/{metapath_sett['epochs']} | Loss: {avg_loss:.4f}")
 
     # extract embeddings
     model.eval()
@@ -65,4 +69,4 @@ def get_node_embeddings(graph: ArticleGraph, metapath: list[tuple[str, str, str]
         for node_type in metapath_node_types:
             embeddings[node_type] = model(node_type).cpu()
 
-    return embeddings
+    return {"embeddings": embeddings, "loss_history": loss_history}

@@ -1,10 +1,12 @@
 from src import FileParser
 from src.plotter import Plotter
 from src.graph import ArticleGraph
+from src.similarities import rank_similar
 from src.processing import process_articles
 from src.node_representation import get_node_embeddings
 
 CONFIG_FILE = "configuration.yaml"
+
 
 def main():
     # parse run configuration
@@ -24,10 +26,10 @@ def main():
     print("\n[ ] Data collected.")
 
     # node list and edge lists
-    data, all_node_types, all_edge_types = process_articles(articles[:500])
+    data, all_node_types, all_edge_types = process_articles(articles[:100])
     print("[ ] Data processed.")
 
-    #
+    # generate graphs for different node-type combinations
     node_combinations = {
         "only_author": ["author"],
         "only_keyword": ["keyword"],
@@ -37,6 +39,7 @@ def main():
     }
     graph_dictionary = {}
     for node_combo, my_node_combo in node_combinations.items():
+        print(f"     [ ] Generating: {node_combo} graph.")
         # select edge types with relevant node types
         my_edge_types = [e for e in all_edge_types if (e[0] in my_node_combo) and (e[2] in my_node_combo)]
         #
@@ -45,8 +48,6 @@ def main():
             node_types=my_node_combo,
             edge_types=my_edge_types,
         )
-        output_file_name = config["output_directory"] / f"figure_{node_combo}.html"
-        article_graph.plot(file_name=output_file_name)
 
         # save graph
         graph_dictionary[node_combo] = article_graph
@@ -67,6 +68,20 @@ def main():
         metapath_sett=config["metapath_settings"],
     )
     print("\n[ ] MetaPath2Vec finished.")
+
+    # Similarity is not used at the moment TODO: Utilize similarities
+    keyword_keyword_m2v_similarity = rank_similar(
+        embeddings_a=node_representations["embeddings"]["keyword"],
+        embeddings_b=node_representations["embeddings"]["keyword"],
+        names_a=list(graph_dictionary["all"].node_encodings["keyword"].keys()),
+        names_b=list(graph_dictionary["all"].node_encodings["keyword"].keys()),
+    )
+    author_keyword_m2v_similarity = rank_similar(
+        embeddings_a=node_representations["embeddings"]["author"],
+        embeddings_b=node_representations["embeddings"]["keyword"],
+        names_a=list(graph_dictionary["all"].node_encodings["author"].keys()),
+        names_b=list(graph_dictionary["all"].node_encodings["keyword"].keys()),
+    )
 
     #
     plot = Plotter()
@@ -93,6 +108,10 @@ def main():
         graph=graph_dictionary["all"],
         embs=node_representations["embeddings"],
         output_file=config["output_directory"]/"figure_embedding_space_projection_articles.html")
+    # plot Graph structures
+    for my_graph_type, graph_struct in graph_dictionary.items():
+        output_file_name = config["output_directory"] / f"figure_{my_graph_type}.html"
+        graph_struct.plot(file_name=output_file_name)
 
     print("\n[!] Done")
 

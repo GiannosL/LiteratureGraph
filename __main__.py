@@ -88,6 +88,22 @@ def main():
         names_a=list(graph_dictionary["all"].node_encodings["author"].keys()),
         names_b=list(graph_dictionary["all"].node_encodings["article"].keys()),
     )
+    # save similarities
+    keyword_keyword_m2v_similarity.to_csv(
+        config["output_directory"] / "table_similarity_keyword_keyword.tsv",
+        sep="\t",
+        index=False
+    )
+    author_keyword_m2v_similarity.to_csv(
+        config["output_directory"] / "table_similarity_author_keyword.tsv",
+        sep="\t",
+        index=False
+    )
+    article_author_m2v_similarity.to_csv(
+        config["output_directory"] / "table_similarity_article_author.tsv",
+        sep="\t",
+        index=False
+    )
 
     # cluster nodes based on embedding
     clusters = {}
@@ -97,6 +113,8 @@ def main():
             names_a=list(graph_dictionary["all"].node_encodings[my_type].keys()),
             norm=True
         )
+    for my_type, my_df in clusters.items():
+        my_df.to_csv(config["output_directory"] / f"table_clusters_{my_type}.tsv", sep="\t", index=False)
 
     #
     plot = Plotter()
@@ -104,10 +122,12 @@ def main():
         loss_history=node_representations["loss_history"],
         output_file=config["output_directory"]/"figure_metapath2vec_loss_history.png",
     )
+    #
     plot.embedding_space(
         graph=graph_dictionary["all"],
         embs=node_representations["embeddings"],
         output_file=config["output_directory"]/"figure_embedding_space_projection_all.html")
+    #
     plot.embedding_space(
         node_type="keyword",
         graph=graph_dictionary["all"],

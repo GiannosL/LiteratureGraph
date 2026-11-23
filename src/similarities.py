@@ -1,4 +1,6 @@
 import torch
+import hdbscan
+import numpy as np
 import pandas as pd
 import torch.nn.functional as F
 
@@ -27,3 +29,37 @@ def rank_similar(
     df = df.sort_values(["entity_a", "rank"]).reset_index(drop=True)
 
     return df
+
+
+def cluster_nodes(embeddings: torch.Tensor, names_a: list[str], norm: bool = True) -> pd.DataFrame:
+    """
+    This function takes as input embeddings for a SPECIFIC NODE TYPE and clusters it using HDBSCAN.
+    """
+    # convert to numpy
+    x = embeddings.detach().cpu().numpy()
+
+    # optionally normalize embeddings
+    if norm:
+        x = x / np.linalg.norm(x, axis=1, keepdims=True).clip(min=1e-12)
+
+    # initialize HDBSCAN
+    my_clusterer = hdbscan.HDBSCAN(
+        min_cluster_size=5,
+        min_samples=5,
+        metric="euclidean",
+        cluster_selection_method="eom"
+    )
+
+    # fit model
+    clustered_labels = my_clusterer.fit_predict(x)
+    # extract membership probabilities
+    clustered_label_probabilities = my_clusterer.probabilities_
+
+    # convert to dataframe
+    data = {"node": names_a, "cluster": clustered_labels, "probability": clustered_label_probabilities}
+    results = pd.DataFrame(data)
+    #
+    results = results.sort_values(by=["cluster", "probability", "node"], ascending=[True, False, True])
+    results = results.reset_index(drop=True)
+
+    return results

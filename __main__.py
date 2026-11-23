@@ -1,9 +1,9 @@
 from src import FileParser
 from src.plotter import Plotter
 from src.graph import ArticleGraph
-from src.similarities import rank_similar
 from src.processing import process_articles
 from src.node_representation import get_node_embeddings
+from src.similarities import rank_similar, cluster_nodes
 
 CONFIG_FILE = "configuration.yaml"
 
@@ -82,6 +82,21 @@ def main():
         names_a=list(graph_dictionary["all"].node_encodings["author"].keys()),
         names_b=list(graph_dictionary["all"].node_encodings["keyword"].keys()),
     )
+    article_author_m2v_similarity = rank_similar(
+        embeddings_a=node_representations["embeddings"]["author"],
+        embeddings_b=node_representations["embeddings"]["article"],
+        names_a=list(graph_dictionary["all"].node_encodings["author"].keys()),
+        names_b=list(graph_dictionary["all"].node_encodings["article"].keys()),
+    )
+
+    # cluster nodes based on embedding
+    clusters = {}
+    for my_type in graph_dictionary["all"].node_encodings.keys():
+        clusters[my_type] = cluster_nodes(
+            embeddings=node_representations["embeddings"][my_type],
+            names_a=list(graph_dictionary["all"].node_encodings[my_type].keys()),
+            norm=True
+        )
 
     #
     plot = Plotter()

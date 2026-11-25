@@ -16,7 +16,7 @@ def rank_similar(
     embs_b = F.normalize(embeddings_b, p=2, dim=1)
 
     # cross-cosine similarity matrix (n_a, n_b)
-    similarity_matrix = embeddings_a @ embeddings_b.T
+    similarity_matrix = embs_a @ embs_b.T
 
     # convert to dataframe
     df = pd.DataFrame(similarity_matrix.detach().cpu().numpy(), index=names_a, columns=names_b)

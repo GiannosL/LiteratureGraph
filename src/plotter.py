@@ -1,10 +1,11 @@
-import pandas as pd
 import torch
 import numpy as np
+import pandas as pd
 from pathlib import Path
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from sklearn.manifold import TSNE
+from src.data import Data
 from src.graph import ArticleGraph
 
 
@@ -16,8 +17,9 @@ class Plotter:
         self._tick = 14 # ax-tick size
         self._dpi = 500 # dpi
 
-    def metapath2vec_loss_history(self, loss_history: list[float], output_file: Path):
+    def metapath2vec_loss_history(self, data: Data, output_file: Path):
         # number of epochs
+        loss_history = data.node_representations["loss_history"]
         epochs = [i+1 for i in range(len(loss_history))]
 
         # plotting
@@ -38,7 +40,11 @@ class Plotter:
         plt.close()
 
     @staticmethod
-    def embedding_space(graph: ArticleGraph, embs: dict, output_file: Path, node_type: str = ""):
+    def embedding_space(data: Data, output_file: Path, node_type: str = ""):
+        # data
+        graph = data.graph_dictionary["all"]
+        embs = data.node_representations["embeddings"]
+
         # if specified to subset on a specific node type remove the others
         if node_type:
             embs = {key: value for key, value in embs.items() if key == node_type}

@@ -1,14 +1,16 @@
+from src.data import Data
 from src import FileParser
 from src.plotter import Plotter
 from src.graph import ArticleGraph
 from src.processing import process_articles
-from src.node_representation import get_node_embeddings
-from src.similarities import rank_similar, cluster_nodes
 
 CONFIG_FILE = "configuration.yaml"
 
 
 def main():
+    # data object to store all information
+    data = Data()
+
     # parse run configuration
     parser = FileParser()
     config = parser.parse_config(file_name=CONFIG_FILE)
@@ -26,37 +28,26 @@ def main():
     print("\n[ ] Data collected.")
 
     # node list and edge lists
-    data, all_node_types, all_edge_types = process_articles(articles[:100])
+    #data, all_node_types, all_edge_types = process_articles(articles[:300])
+    data.node_edge_dictionary, data.node_types, data.edge_types = process_articles(articles[:300])
     print("[ ] Data processed.")
 
     # generate graphs for different node-type combinations
+    ## combinations of nodes for different graphs
     node_combinations = {
         "only_author": ["author"],
         "only_keyword": ["keyword"],
         "article_author": ["article", "author"],
         "author_keyword": ["author", "keyword"],
-        "all": ["author", "keyword", "article"],
+        "all": ["author", "keyword", "article"], # necessary for later parts
     }
-    graph_dictionary = {}
-    for node_combo, my_node_combo in node_combinations.items():
-        print(f"     [ ] Generating: {node_combo} graph.")
-        # select edge types with relevant node types
-        my_edge_types = [e for e in all_edge_types if (e[0] in my_node_combo) and (e[2] in my_node_combo)]
-        #
-        article_graph = ArticleGraph(
-            data=data,
-            node_types=my_node_combo,
-            edge_types=my_edge_types,
-        )
+    data = get_graphs(node_comb=node_combinations, data=data)
 
-        # save graph
-        graph_dictionary[node_combo] = article_graph
     print("[ ] Graphs generated.")
 
     # node representation learning
-    print("\n=== MetaPath2Vec: authors-keywords ===")
-    node_representations = get_node_embeddings(
-        graph=graph_dictionary["all"],
+    print("\n=== MetaPath2Vec ===")
+    data.get_node_embeddings(
         metapath=[
             ("article", "is_written_by", "author"),
             ("author", "writes_with", "author"),
@@ -65,90 +56,66 @@ def main():
             ("keyword", "rev_works_on", "author"),
             ("author", "rev_is_written_by", "article")
         ],
-        metapath_sett=config["metapath_settings"],
+        m2v_settings=config["metapath_settings"],
     )
     print("\n[ ] MetaPath2Vec finished.")
 
-    # Similarity is not used at the moment TODO: Utilize similarities
-    keyword_keyword_m2v_similarity = rank_similar(
-        embeddings_a=node_representations["embeddings"]["keyword"],
-        embeddings_b=node_representations["embeddings"]["keyword"],
-        names_a=list(graph_dictionary["all"].node_encodings["keyword"].keys()),
-        names_b=list(graph_dictionary["all"].node_encodings["keyword"].keys()),
-    )
-    author_keyword_m2v_similarity = rank_similar(
-        embeddings_a=node_representations["embeddings"]["author"],
-        embeddings_b=node_representations["embeddings"]["keyword"],
-        names_a=list(graph_dictionary["all"].node_encodings["author"].keys()),
-        names_b=list(graph_dictionary["all"].node_encodings["keyword"].keys()),
-    )
-    article_author_m2v_similarity = rank_similar(
-        embeddings_a=node_representations["embeddings"]["author"],
-        embeddings_b=node_representations["embeddings"]["article"],
-        names_a=list(graph_dictionary["all"].node_encodings["author"].keys()),
-        names_b=list(graph_dictionary["all"].node_encodings["article"].keys()),
-    )
-    # save similarities
-    keyword_keyword_m2v_similarity.to_csv(
-        config["output_directory"] / "table_similarity_keyword_keyword.tsv",
-        sep="\t",
-        index=False
-    )
-    author_keyword_m2v_similarity.to_csv(
-        config["output_directory"] / "table_similarity_author_keyword.tsv",
-        sep="\t",
-        index=False
-    )
-    article_author_m2v_similarity.to_csv(
-        config["output_directory"] / "table_similarity_article_author.tsv",
-        sep="\t",
-        index=False
+    # node similarities between different node types
+    data.get_similarities(
+        node_combos=[("article", "author"), ("author", "keyword"), ("keyword", "keyword")],
+        out_dir=config["output_directory"],
     )
 
     # cluster nodes based on embedding
-    clusters = {}
-    for my_type in graph_dictionary["all"].node_encodings.keys():
-        clusters[my_type] = cluster_nodes(
-            embeddings=node_representations["embeddings"][my_type],
-            names_a=list(graph_dictionary["all"].node_encodings[my_type].keys()),
-            norm=True
-        )
-    for my_type, my_df in clusters.items():
-        my_df.to_csv(config["output_directory"] / f"table_clusters_{my_type}.tsv", sep="\t", index=False)
+    data.cluster_nodes_by_type(out_dir=config["output_directory"])
 
     #
     plot = Plotter()
     plot.metapath2vec_loss_history(
-        loss_history=node_representations["loss_history"],
+        data=data,
         output_file=config["output_directory"]/"figure_metapath2vec_loss_history.png",
     )
     #
     plot.embedding_space(
-        graph=graph_dictionary["all"],
-        embs=node_representations["embeddings"],
+        data=data,
         output_file=config["output_directory"]/"figure_embedding_space_projection_all.html")
     #
-    plot.embedding_space(
-        node_type="keyword",
-        graph=graph_dictionary["all"],
-        embs=node_representations["embeddings"],
-        output_file=config["output_directory"]/"figure_embedding_space_projection_keywords.html")
-    plot.embedding_space(
-        node_type="author",
-        graph=graph_dictionary["all"],
-        embs=node_representations["embeddings"],
-        output_file=config["output_directory"]/"figure_embedding_space_projection_authors.html")
-    plot.embedding_space(
-        node_type="article",
-        graph=graph_dictionary["all"],
-        embs=node_representations["embeddings"],
-        output_file=config["output_directory"]/"figure_embedding_space_projection_articles.html")
+    for node_type in data.node_types:
+        plot.embedding_space(
+            data=data,
+            node_type=node_type,
+            output_file=config["output_directory"]/f"figure_embedding_space_projection_{node_type}s.html")
+    
+    exit()
     # plot Graph structures
     for my_graph_type, graph_struct in graph_dictionary.items():
         output_file_name = config["output_directory"] / f"figure_{my_graph_type}.html"
         graph_struct.plot(file_name=output_file_name)
 
     print("\n[!] Done")
+
+
+def get_graphs(node_comb: dict, data: Data) -> Data:
+
+    graph_dictionary = {}
+    for node_combo, my_node_combo in node_comb.items():
+        print(f"     [ ] Generating: {node_combo} graph.")
+        # select edge types with relevant node types
+        my_edge_types = [e for e in data.edge_types if (e[0] in my_node_combo) and (e[2] in my_node_combo)]
+        #
+        article_graph = ArticleGraph(
+            data=data.node_edge_dictionary,
+            node_types=my_node_combo,
+            edge_types=my_edge_types,
+        )
+
+        # save graph
+        graph_dictionary[node_combo] = article_graph
+
+    # save in data object
+    data.graph_dictionary = graph_dictionary
+
+    return data
 
 
 if __name__ == "__main__":

@@ -73,7 +73,7 @@ def main():
     plot = Plotter()
     plot.metapath2vec_loss_history(
         data=data,
-        output_file=config["output_directory"]/"figure_metapath2vec_loss_history.png",
+        output_file=config["output_directory"]/"figure_metapath2vec_loss_history.html",
     )
     #
     plot.embedding_space(
@@ -85,7 +85,7 @@ def main():
             data=data,
             node_type=node_type,
             output_file=config["output_directory"]/f"figure_embedding_space_projection_{node_type}s.html")
-    
+
     exit()
     # plot Graph structures
     for my_graph_type, graph_struct in graph_dictionary.items():

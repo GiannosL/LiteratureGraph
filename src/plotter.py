@@ -5,6 +5,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from sklearn.manifold import TSNE
+from torch.distributed.checkpoint import load_state_dict
+
 from src.data import Data
 from src.graph import ArticleGraph
 
@@ -23,21 +25,33 @@ class Plotter:
         epochs = [i+1 for i in range(len(loss_history))]
 
         # plotting
-        plt.figure(figsize=self._fs)
+        fig = go.Figure()
 
-        plt.plot(epochs, loss_history, color="skyblue")
+        trace = go.Scatter(
+            x=epochs,
+            y=loss_history,
+            mode="lines",
+            name="Training loss",
+            line={"color": "skyblue", "width": 2},
+            hovertemplate="Epoch: %{x}<br>Loss: %{y:.6f}<extra></extra>",
+        )
+        fig.add_trace(trace)
 
-        plt.title("MetaPath2Vec loss history", weight="bold", fontsize=self._t)
-        plt.xlabel("epoch", fontsize=self._l)
-        plt.ylabel("loss history", fontsize=self._l)
+        #
+        fig.update_layout(
+            title={"text": "<b>MetaPath2Vec loss history</b>", "x": 0.5, "xanchor": "center"},
+            xaxis_title="Epoch",
+            yaxis_title="Loss",
+            template="plotly_white",
+            hovermode="x unified",
+            font={"family": "Arial", "size": self._l},
+            showlegend=False,
+            autosize=True,
+            margin={"l": 60, "r":30, "t":70, "b":60},
+        )
 
-        ax = plt.gca()
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-        ax.tick_params(axis="both", labelsize=self._tick) # tick size
-
-        plt.savefig(output_file, dpi=self._dpi)
-        plt.close()
+        # save interactive HTML
+        fig.write_html(output_file, include_plotlyjs=True)
 
     @staticmethod
     def embedding_space(data: Data, output_file: Path, node_type: str = ""):
@@ -76,7 +90,6 @@ class Plotter:
                     marker={"size": 6, "opacity": 0.7},
                     customdata=df[["node_name", "node_type"]],
                     hovertemplate="%{customdata[0]}<br>type: %{customdata[1]}<br><extra></extra>",
-                    #hoverinfo="skip",
                 )
             )
 
@@ -86,8 +99,8 @@ class Plotter:
             yaxis_title="dimension 2",
             template="plotly_white",
             legend_title="Node type",
-            width=2500,
-            height=1200,
+            autosize=True,
+            margin={"l": 60, "r": 30, "t": 70, "b": 60},
         )
 
         fig.write_html(output_file)

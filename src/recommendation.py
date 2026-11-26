@@ -15,7 +15,7 @@ class Recommender:
         self.clusters = data.clusters
         self.similarities = data.similarities
 
-    def cluster_descriptions(self, author_top_k: int = 3, cluster_top_k: int = 10):
+    def cluster_descriptions(self, author_top_k: int = 3, cluster_top_k: int = 10) -> list[dict]:
         """
         Author clusters can be described using the top 3 most relevant keywords per author.
 
@@ -36,7 +36,7 @@ class Recommender:
         cluster_df = self.clusters["author"]
         cluster_df = cluster_df.rename(columns={"node": "author"})
 
-        cluster_descriptions = {}
+        cluster_descriptions = []
         for my_cluster, my_df in cluster_df.groupby("cluster"):
             # add keywords
             merged_df = my_df.merge(similarity_df, on="author", how="left")
@@ -45,10 +45,19 @@ class Recommender:
 
             # topX counts in the dataframe
             top_counts = sorted(set(cluster_keyword_count["count"]), reverse=True)
-            print(top_counts)
+            top_counts = top_counts[:cluster_top_k]
+            cluster_keyword_count = cluster_keyword_count[cluster_keyword_count["count"].isin(top_counts)]
+            cluster_keywords = cluster_keyword_count["keyword"].tolist()
+            # save outcome
+            cluster_descriptions.append(
+                {
+                    "id": my_cluster, # ID of cluster
+                    "authors": cluster_keywords["author"].tolist(), # authors in cluster
+                    "descriptive_keywords": cluster_keywords["keyword"].tolist(), # keywords describing the authors
+                }
+            )
 
-
-        exit()
+        return cluster_descriptions
 
     def assign_keywords(self):
         """

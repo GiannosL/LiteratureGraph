@@ -1,5 +1,6 @@
 from src.plotter import Plotter
 from src import FileParser, flow
+from src.recommendation import Recommender
 
 CONFIG_FILE = "configuration.yaml"
 
@@ -10,6 +11,10 @@ def main():
 
     # program flow for graph, node embedding, similarity, and clustering
     data = flow(config)
+
+    # recommendations
+    my_recommender = Recommender(data)
+    my_recommender.cluster_descriptions(author_top_k=3, cluster_top_k=10)
 
     #
     plot = Plotter()

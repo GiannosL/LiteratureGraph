@@ -2,13 +2,10 @@ import torch
 import numpy as np
 import pandas as pd
 from pathlib import Path
-import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from sklearn.manifold import TSNE
-from torch.distributed.checkpoint import load_state_dict
 
 from src.data import Data
-from src.graph import ArticleGraph
 
 
 class Plotter:

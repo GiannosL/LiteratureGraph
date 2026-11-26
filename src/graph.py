@@ -5,7 +5,22 @@ from pathlib import Path
 import plotly.graph_objects as go
 from torch_geometric.data import HeteroData
 from torch_geometric.transforms import ToUndirected
-from src import NODE_TYPE_COLORS, NODE_SIZE_MAP
+
+NODE_SIZE_MAP = {
+    0: 5,
+    1: 10,
+    2: 15,
+    3: 20,
+    4: 25,
+    5: 30,
+    6: 35,
+}
+
+NODE_TYPE_COLORS = {
+    "article": "#C17817",
+    "author": "#3F84E5",
+    "keyword": "#B20D30",
+}
 
 
 class ArticleGraph:

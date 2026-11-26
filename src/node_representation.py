@@ -7,6 +7,7 @@ def get_node_embeddings(graph: ArticleGraph, metapath: list[tuple[str, str, str]
     # load device
     dev_str = "cuda" if torch.cuda.is_available() else "cpu"
     device = torch.device(dev_str)
+    print(f"Running on {dev_str.upper()}")
     #
     g = graph.torch_graph
 

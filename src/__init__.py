@@ -84,7 +84,7 @@ def flow(config: dict[str, Any])  -> Data:
 
         # subset for testing subsets
         if config["subset"]:
-            articles = articles[:500]
+            articles = articles[:1_000]
 
         # node list and edge lists
         data.node_edge_dictionary, data.node_types, data.edge_types = process_articles(articles)
@@ -119,7 +119,7 @@ def flow(config: dict[str, Any])  -> Data:
 
         # node similarities between different node types
         data.get_similarities(
-            node_combos=[("article", "author"), ("author", "keyword"), ("keyword", "keyword")],
+            node_combos=[("author", "article"), ("author", "keyword"), ("keyword", "keyword")],
             out_dir=config["output_directory"],
         )
 
